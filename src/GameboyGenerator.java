@@ -55,6 +55,7 @@ public class GameboyGenerator extends SoundGenerator
 				generatePulse2(marker, length, duty, volume, frequency);
 				break;
 			case WAVE:
+				generateWave(marker, length, volume, frequency);
 				break;
 			case NOISE:
 				break;
@@ -62,7 +63,7 @@ public class GameboyGenerator extends SoundGenerator
 				break;
 		}
 		
-		pushMarker(length);
+		pushMarker(length, true);
 	}
 	
 	//$FF10 0PPPSSSS (Frequency Sweep Period = 0 - 7) | (Frequency Sweep Rate = -8 - 7)
@@ -70,9 +71,9 @@ public class GameboyGenerator extends SoundGenerator
 	//$FF12 VVVVvvvv (Volume = 0 - 15) | (Volume Fade = -8 - 7)
 	//$FF13 FFFFFFFF (Frequency Value = 0 - 2047)
 	//$FF14 TL000FFF (Trigger Switch) | (Length Switch)
-	public void generatePulse1(int length, short information, short frequency, byte sweep)
+	public void generatePulse1(int length, short information, double frequency, byte sweep)
 	{
-		
+		//TODO
 	}
 	
 	//$FF16 DDLLLLLL (Duty cycle = 12.5%, 25%, 50%, 75%) | (Note Length = 0 - 63)
@@ -102,9 +103,15 @@ public class GameboyGenerator extends SoundGenerator
 	//$FF1D FFFFFFFF (Frequency Value = 0 - 2047)
 	//$FF1E TL000FFF (Trigger Switch) | (Length Switch)
 	//$FF30: waveData
-	public void generateWave(int length, short frequency, byte[] waveData)
+	public void generateWave(int offset, int length, byte volume, double frequency)
 	{
-		//TODO
+		double period = sampleRate/frequency;
+		
+		for(int i = 0; i < length && i + offset < size; i++)
+		{
+			data[i + offset][CHANNEL_LEFT] += volume + volume*Math.sin(2*Math.PI/period*i);
+			data[i + offset][CHANNEL_RIGHT] += volume + volume*Math.sin(2*Math.PI/period*i);
+		}
 	}
 	
 	//NOISE CHANNEL
@@ -116,6 +123,11 @@ public class GameboyGenerator extends SoundGenerator
 	public void applyFilter() 
 	{
 		//TODO
+		for(int d = 0; d < size; d++)
+		{
+			//data[d][CHANNEL_LEFT] = (byte) (data[d][CHANNEL_LEFT]*Math.sin(d)*50);
+			//data[d][CHANNEL_RIGHT] = data[d][CHANNEL_LEFT];
+		}
 	}
 	
 	//Method for writing waveform bytes in stereo sound
@@ -147,6 +159,14 @@ public class GameboyGenerator extends SoundGenerator
 			else
 				y = Main.RESOLUTION_Y/2;
 			g.drawLine(x,lastY,x,y);
+		}
+	}
+	
+	public void deleteData() {
+		for(int d = 0; d < size; d++)
+		{
+			data[d][CHANNEL_LEFT] = 0;
+			data[d][CHANNEL_RIGHT] = 0;
 		}
 	}
 }

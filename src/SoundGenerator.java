@@ -8,8 +8,8 @@ import java.io.IOException;
  * 
  * This is an abstract class that inherits the Generator interface, it defines
  * important data that should be used within a Generator class. While it is not
- * required, it is recommended that any Generator class created should extend this
- * class.
+ * required, it is recommended that any class created should extend this class
+ * and not implement Generator.
  */
 
 public abstract class SoundGenerator implements Generator
@@ -18,10 +18,11 @@ public abstract class SoundGenerator implements Generator
 	public static enum CHANNEL {PULSE1, PULSE2, WAVE, NOISE, SQUARE, TRIANGLE};
 	
 	protected CHANNEL mode = CHANNEL.SQUARE;//The mode used to indicate what type of wave to generate
-	protected short bitsPerSample = 16;		//The number of bits present in each sample
-	protected int size = 0xFFFFF;			//Size of the data
+	protected short bitsPerSample = 16;		//The number of bits present in each sample (Default is 16)
+	protected int size;						//Size of the data
 	protected int marker = 0;				//The generator marker
-	protected int sampleRate = 44100;		//The sample rate of the waveform (default = CD quality)
+	protected int sampleRate;				//The sample rate of the waveform (default = CD quality)
+	protected int autoSpace = 0;			//Used to create an automatic space between notes
 	protected byte numberOfChannels = 2;	//The number of output channels used (NOT to be confused with generating channels)
 	protected boolean end = false;			//The indicator for the marker reaching the end
 	
@@ -41,6 +42,7 @@ public abstract class SoundGenerator implements Generator
 	public abstract void generatePulse(int length, byte duty, byte volume, int note);
 	public abstract void generatePulse(int length, byte duty, byte volume, double frequency);
 	public abstract void writeData(FileWriter write) throws IOException;
+	public abstract void deleteData();
 	
 	//Method used to write the header of the .wav file. Unless the format 
 	//needs to be changed, then it is recommended to use this method
@@ -48,11 +50,20 @@ public abstract class SoundGenerator implements Generator
 	public void writeHeader(FileWriter write) throws IOException
 	{
 		//INTRO DATA
-		int byteRate = (sampleRate*numChannels*bitsPerSample)/8;
 		short blockAlign = (short) (numChannels*bitsPerSample/8);
+		int byteRate = sampleRate*blockAlign;
 		//ADDITIONS DO NOT EXIST WHEN USING PCM
 		int subChunk2Size = size * numChannels * bitsPerSample/8;
 		int chunkSize = 4 + (8 + subChunk1Size) + (8 + subChunk2Size);
+		
+		System.out.println("---Writing File---");
+		System.out.println("Sample Rate: " + sampleRate + " samples/sec");
+		System.out.println("Sample Size: " + size + " samples");
+		System.out.println("Time Length: " + (double)size/sampleRate + " sec");
+		System.out.println("Byte Rate: " + byteRate + " bytes/sec");
+		System.out.println("Chunk Size: " + chunkSize + " bytes");
+		System.out.println("Sub Chunk 1 Size: " + subChunk1Size + " bytes");
+		System.out.println("Sub Chunk 2 Size: " + subChunk2Size + " bytes");
 		
 		//Writing Data
 		write.write(chunkID);
@@ -80,12 +91,19 @@ public abstract class SoundGenerator implements Generator
 	
 	//Method for pushing the marker
 	//length = number of samples to push marker by
-	public void pushMarker(int length) {
-		marker += length;
+	//auto = whether auto spacing should be added
+	public void pushMarker(int length, boolean auto) {
+		if(auto)
+			marker += length + autoSpace;
+		else
+			marker += length;
+		
 		if(marker >= size)
 			end = true;
 	}
 	
+	//Method for setting automatic spacing
+	public void setAutoSpace(int space) {autoSpace = space;}
 	//Method for setting mode
 	public void setMode(CHANNEL chan) {mode = chan;}
 	//Method for retrieving size of the data
@@ -96,17 +114,17 @@ public abstract class SoundGenerator implements Generator
 	//Method for writing integers as four independent bytes
 	protected void writeInt(FileWriter write, int i) throws IOException
 	{
-		write.write((byte)(i%0xFF));
-		write.write((byte)((i >> 8)%0xFF));
-		write.write((byte)((i >> 16)%0xFF));
-		write.write((byte)(i >> 24));
+		write.write(i & 0xFF);
+		write.write(((i >> 8) & 0xFF));
+		write.write(((i >> 16) & 0xFF));
+		write.write(i >> 24);
 	}
 	
 	//Method for writing shorts as two independent bytes
 	protected void writeShort(FileWriter write, short i) throws IOException
 	{
-		write.write((byte)(i%0xFF));
-		write.write((byte)(i >> 8));
+		write.write(i & 0xFF);
+		write.write(i >> 8);
 	}
 	
 	//Dummy method for drawing waveform on Swing component

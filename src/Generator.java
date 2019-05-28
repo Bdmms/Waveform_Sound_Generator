@@ -67,7 +67,8 @@ public interface Generator
 	
 	//There must be a method to push the generator marker forward by a specified amount
 	//length = number of samples to push marker
-	public void pushMarker(int length);
+	//auto = whether auto spacing should be added
+	public void pushMarker(int length, boolean auto);
 	
 	//There must be a method to write the header of the .wav file
 	public void writeHeader(FileWriter writer) throws IOException;

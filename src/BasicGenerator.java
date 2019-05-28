@@ -25,13 +25,13 @@ public class BasicGenerator extends SoundGenerator
 	public void generatePulse(int length, byte duty, byte volume, double frequency)
 	{
 		generateSquareWave(marker, length, 0.5, (short)(volume * 0xFFFF / 0xFF), frequency);
-		pushMarker(length);
+		pushMarker(length, true);
 	}
 	
 	public void generatePulse(int length, byte duty, byte volume, int note)
 	{
 		generateSquareWave(marker, length, 0.5, (short)(volume * 0xFFFF / 0xFF), noteScale[note]);
-		pushMarker(length);
+		pushMarker(length, true);
 	}
 	
 	public void generateNote(int length, double width, short volume, int note)
@@ -50,7 +50,7 @@ public class BasicGenerator extends SoundGenerator
 				break;
 		}
 		
-		pushMarker(length);
+		pushMarker(length, true);
 	}
 	
 	//Generates square pulse waves for specified number of samples
@@ -83,6 +83,27 @@ public class BasicGenerator extends SoundGenerator
 		}
 	}
 	
+	//Generates waveform using a repeating sample
+	public void generateFreeWave(int offset, int length, float volume, double frequency, double[] wave)
+	{
+		double period = sampleRate/frequency;
+		double rate = wave.length/period;
+		for(int i = 0; i < length && i + offset < size; i++)
+		{
+			data[i + offset][CHANNEL_LEFT] += (short) (volume*wave[(int)((i*rate)%wave.length)]*0xFFFF);
+			data[i + offset][CHANNEL_RIGHT] += data[i + offset][CHANNEL_LEFT];
+		}
+	}
+	
+	public void generateFreeWaveNoFrequency(int offset, int length, float volume, double[] wave)
+	{
+		for(int i = 0; i < length && i + offset < size; i++)
+		{
+			data[i + offset][CHANNEL_LEFT] += (short) (volume*wave[i%wave.length]*0xFFFF);
+			data[i + offset][CHANNEL_RIGHT] += data[i + offset][CHANNEL_LEFT];
+		}
+	}
+	
 	public void applyFilter()
 	{
 		//Insert filter here
@@ -99,6 +120,14 @@ public class BasicGenerator extends SoundGenerator
 		{
 			writeShort(write, data[d][CHANNEL_LEFT]);
 			writeShort(write, data[d][CHANNEL_RIGHT]);
+		}
+	}
+	
+	public void deleteData() {
+		for(int d = 0; d < size; d++)
+		{
+			data[d][CHANNEL_LEFT] = 0;
+			data[d][CHANNEL_RIGHT] = 0;
 		}
 	}
 }
